@@ -1,0 +1,226 @@
+<! doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Engine</title>
+        <style>
+            /* Centralisa o canvas na tela */
+            canvas {
+                position: absolute;
+                top: 0px;
+                bottom: 0px;
+                left: 0px;
+                right: 0px;
+                margin: auto;
+            } 
+        </style>
+    </head>
+    <body>
+        <script>
+            //Global variables
+            var canvas, context, ALTURA, LARGURA, frames = 0, maxJumps = 3, velocity = 6, currentStats,
+            stats = {
+                play: 0,
+                playing: 1,
+                gameOver: 2,
+            },
+
+            //Chão(floor)do jogo
+            land = {
+                y:  550,    
+                height: 50,
+                color:  "#ffdf70",
+
+                draw: function(){
+                    context.fillStyle = this.color;
+                    context.fillRect( 0, this.y, LARGURA, this.height );
+                }
+
+            },
+
+            //Personagem bloco do jogo 
+            block = {
+                x: 50,
+                y: 0,
+                height: 50,
+                width: 50,
+                color: "#ff4e4e",
+                gravity: 1.6,
+                speed: 0,
+                jumpPower: 23.6,
+                qntJumps: 0,
+
+                /* Calcula a posição vertical do personagem em relação ao chão e retorna y = 0 (Ponto de contato entre o chão e o personagem) */
+                refresh: function(){
+                    this.speed += this.gravity;
+                    this.y += this.speed;
+
+                    if( this.y > land.y - this.height){
+                        this.y = land.y - this.height;
+                        this.qntJumps = 0;
+                    }
+
+                },
+
+                /* Acão do personagem de pulo, desvios de obstáculos. */
+                jump: function(){
+
+                    if( this.qntJumps < maxJumps ){
+                        this.speed = -this.jumpPower;
+                        this.qntJumps ++;
+                    } 
+                },
+
+                //Desenha o block(personagem)
+                draw: function(){
+                    context.fillStyle = this.color;
+                    context.fillRect( this.x, this.y, this.height, this.width);
+                }
+            },
+
+            obstacle = {
+                _obs: [],
+                colors: [ "#ffbc1c", "#ff1c1c", "#ff85e1", "#52a7ff", "#78ff5d"],
+                insertTime: 0,
+
+                insert: function(){
+                    this._obs.push({
+                        x: LARGURA,
+                        /* Recebe larguras, alturas e corres aleatórios */
+                        width: 30 + Math.floor( 21 * Math.random()),
+                        height: 10 + Math.floor( 75 * Math.random()),
+                        color: this.colors[Math.floor( 5 * Math.random())]
+                    });
+                    
+                    this.insertTime = 30 + Math.floor(40 * Math.random());
+                },
+
+                refresh: function(){
+                   if(this.insertTime == 0)
+                        this.insert();
+                    else
+                        this.insertTime--;
+                    for( var i=0, temp = this._obs.length; i < temp; i++){
+                        var obs = this._obs[i];
+
+                        obs.x -= velocity;
+                        if (block.x < obs.x + obs.width && block.x + block.width >=
+                            obs.x && block.y + block.height >= land.y -obs.height) {
+                            
+                            currentStats = stats.gameOver;
+
+                        }
+
+                        else if ( obs.x <= -obs.width ){
+                            this._obs.splice(i, 1);
+                            temp --;
+                            i --;
+                        }
+                    }    
+                },
+
+                clear: function(){
+                    this._obs = [];
+                },
+
+                draw: function(){
+                    for( var i=0, temp = this._obs.length; i < temp; i++){
+                        var obs = this._obs[i];
+                        context.fillStyle = obs.color;
+                        context.fillRect( obs.x, land.y - obs.height, obs.width, obs.height);
+                    }
+                }
+            };
+            
+            function click(event){
+
+                if (currentStats == stats.playing) {
+                    //Permite que o bloco(Personagem) se desloque negativamente na posição y(Ação de pular) na função de click
+                    block.jump();
+
+                }
+                else if (currentStats == stats.play) {
+                    currentStats = stats.playing;
+                }
+                else if (currentStats == stats.gameOver){
+                    currentStats = stats.play;
+                }
+            }
+
+            function main( ) {
+
+                ALTURA = window.innerHeight;
+                LARGURA = window.innerWidth;
+
+                if  ( LARGURA >= 500 )    {
+                    ALTURA = 600;
+                    LARGURA = 600;
+                }
+
+                canvas = document.createElement("canvas");
+                canvas.height = ALTURA;
+                canvas.width = LARGURA;
+                canvas.style.border = "1px solid #000";
+
+                context = canvas.getContext("2d");
+                document.body.appendChild(canvas);
+                document.addEventListener("mousedown", click);
+
+                currentStats = stats.play;
+                wheel();
+            }
+
+            function wheel( ){
+                //Atualiza o jogo
+                refresh();
+
+                //Desenha o jogo
+                draw();
+
+                //Mantém o jogo em loop infinito
+                window.requestAnimationFrame(wheel);
+            }
+
+            function refresh(){
+                frames ++;
+
+                block.refresh();
+
+                if(currentStats == stats.playing){
+                    obstacle.refresh();
+                }
+
+                else if (currentStats == stats.gameOver) {
+                    obstacle.clear();
+                }
+                
+            }
+
+            function draw(){
+                context.fillStyle = "#80daff";
+                context.fillRect(0, 0, LARGURA, ALTURA);
+
+                if(currentStats == stats.play){
+                    context.fillStyle = "green";
+                    context.fillRect( LARGURA / 2 - 50, ALTURA / 2 - 50, 100, 100 );
+                }
+                else if(currentStats == stats.gameOver) {
+                    context.fillStyle = "red";
+                    context.fillRect( LARGURA / 2 - 50, ALTURA / 2 - 50, 100, 100 );
+                }
+
+                else if(currentStats == stats.playing) {
+                    obstacle.draw();   
+                }
+
+
+                land.draw();
+                block.draw();
+
+            }
+            
+            //Starts the game
+            main();
+        </script>
+    </body>            
+</thml>
